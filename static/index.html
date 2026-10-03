@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tastes Like Home</title>
+<meta name="description" content="New city, same you. An AI agent that translates what you love back home into places you'll love where you live now — powered by Qloo's taste graph.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%231e2a4a'/><circle cx='16' cy='16' r='8' fill='none' stroke='%23e8b04a' stroke-width='2.5'/><path d='M8 16h16M16 8c3 3 3 13 0 16M16 8c-3 3-3 13 0 16' stroke='%23e8b04a' stroke-width='1.5' fill='none'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&family=Fraunces:ital,opsz,wght@0,9..144,600;1,9..144,500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="/" aria-label="Tastes Like Home home">
+    <svg viewBox="0 0 32 32" width="28" height="28" aria-hidden="true"><rect width="32" height="32" rx="7" fill="var(--cover)"/><circle cx="16" cy="16" r="8" fill="none" stroke="var(--gold)" stroke-width="2.5"/><path d="M8 16h16M16 8c3 3 3 13 0 16M16 8c-3 3-3 13 0 16" stroke="var(--gold)" stroke-width="1.5" fill="none"/></svg>
+    Tastes Like Home
+  </a>
+  <span class="powered">grounded in Qloo's taste graph</span>
+</header>
+
+<!-- STEP 1: onboarding -->
+<section id="start" class="start">
+  <div class="cover">
+    <p class="eyebrow">New city, same you</p>
+    <h1>Tell us what you love back home.<br><em>We'll find it where you live now.</em></h1>
+    <p class="lede">Moving is lonely partly because none of your places exist yet. Tastes Like Home reads your favourite spots, music, films and books, and uses Qloo's cultural taste graph to find the places in your new city that people with your taste actually love.</p>
+  </div>
+
+  <form id="setup" class="card setup">
+    <div class="route">
+      <label>I'm from<input id="home" placeholder="Chengdu" maxlength="80" autocomplete="off"></label>
+      <span class="arrow" aria-hidden="true">→</span>
+      <label>and I now live in<input id="city" placeholder="Los Angeles" maxlength="80" required autocomplete="off"></label>
+    </div>
+
+    <fieldset>
+      <legend>Things I love back home <small>(3–8 works best)</small></legend>
+      <div class="kinds" id="kinds" role="radiogroup" aria-label="Kind of favourite">
+        <button type="button" data-k="place" class="on">🍜 A spot</button>
+        <button type="button" data-k="artist">🎵 Music</button>
+        <button type="button" data-k="movie">🎬 Film</button>
+        <button type="button" data-k="tv_show">📺 TV</button>
+        <button type="button" data-k="book">📚 Book</button>
+        <button type="button" data-k="brand">🛍️ Brand</button>
+      </div>
+      <div class="adder">
+        <input id="favInput" placeholder="e.g. Chen Mapo Tofu" maxlength="120" autocomplete="off">
+        <button type="button" id="addFav" class="ghost">Add</button>
+      </div>
+      <ul id="favs" class="favs"></ul>
+      <p class="hint" id="sampleRow">No idea where to start? <button type="button" class="link" id="sample">Try a sample profile</button></p>
+    </fieldset>
+
+    <label class="block"><span>What would help most right now? <small>(optional)</small></span>
+      <textarea id="needs" rows="2" maxlength="400" placeholder="I miss spicy food, need somewhere quiet to study on weekends, and want to meet people into indie music."></textarea>
+    </label>
+    <label class="block inline">Budget
+      <select id="price"><option value="">Any</option><option value="1">$</option><option value="2" selected>$$</option><option value="3">$$$</option></select>
+    </label>
+
+    <button class="primary big" id="go" type="submit">Find my matches</button>
+  </form>
+
+  <section id="confirm" class="card confirm" hidden>
+    <h2>Is this what you meant?</h2>
+    <p class="hint">We matched your favourites to entities in Qloo's taste graph. Pick the right one or drop it.</p>
+    <div id="matches" class="matches"></div>
+    <div class="row"><button class="ghost" id="back">Back</button><button class="primary big" id="build">Build my city guide ✦</button></div>
+  </section>
+</section>
+
+<!-- STEP 2: guide -->
+<section id="guide" class="guide" hidden>
+  <div class="pp-head">
+    <div>
+      <p class="eyebrow" id="ppRoute"></p>
+      <h1 id="ppTitle">Your city, to your taste</h1>
+      <p class="lede" id="ppWelcome"></p>
+    </div>
+    <button class="ghost" id="restart">Start over</button>
+  </div>
+
+  <div class="dna card" id="dnaCard">
+    <h3>Your taste, in Qloo's words</h3>
+    <div id="dna" class="dna-tags"></div>
+  </div>
+
+  <div class="pp-grid">
+    <div class="main-col">
+      <div class="card plan" id="planCard" hidden>
+        <h3>Your first week</h3>
+        <ol id="plan" class="timeline"></ol>
+      </div>
+      <div id="sections"></div>
+    </div>
+    <aside class="side-col">
+      <div class="card mapcard"><div id="map" role="img" aria-label="Map of recommended places"></div></div>
+      <div class="card chat">
+        <h3>Ask your guide</h3>
+        <div id="log" class="log"></div>
+        <div class="chips" id="chips">
+          <button>Somewhere quiet to study on Sunday</button>
+          <button>Comfort food that tastes like home, under $$</button>
+          <button>Where would I meet people with my taste?</button>
+        </div>
+        <form id="chatForm" class="composer">
+          <input id="chatInput" placeholder="Ask anything about settling in…" maxlength="500" autocomplete="off">
+          <button class="primary" aria-label="Send">→</button>
+        </form>
+      </div>
+    </aside>
+  </div>
+</section>
+
+<div id="loading" class="loading" hidden><div class="pulse">✦</div><p id="loadingText">Reading your taste…</p></div>
+<div id="toasts" class="toasts" aria-live="polite"></div>
+<footer>Tastes Like Home · recommendations from <a href="https://www.qloo.com" target="_blank" rel="noopener">Qloo</a> · map © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors · <a href="https://github.com/greatgeekgrace/tastes-like-home" target="_blank" rel="noopener">source</a></footer>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="/static/app.js"></script>
+</body>
+</html>
