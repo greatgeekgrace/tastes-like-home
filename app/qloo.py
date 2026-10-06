@@ -53,7 +53,7 @@ def slim(e, explain=None):
     out = {
         "id": e.get("entity_id") or e.get("id"),
         "name": e.get("name"),
-        "type": (e.get("subtype") or e.get("type") or "").replace("urn:entity:", ""),
+        "type": (e.get("subtype") or (e.get("types") or [""])[0] or e.get("type") or "").replace("urn:entity:", ""),
         "image": _img(e),
         "popularity": round(e.get("popularity") or 0, 3),
         "tags": tags[:8],
@@ -64,7 +64,8 @@ def slim(e, explain=None):
         out["lat"], out["lon"] = loc.get("lat"), loc.get("lon")
     for k in ("business_rating", "price_level", "phone", "website", "release_year", "publication_year", "description"):
         if p.get(k) not in (None, ""):
-            out[k] = p[k] if k != "description" else str(p[k])[:240]
+            v = p[k]
+            out[k] = str(v)[:240] if k == "description" else (round(v, 1) if isinstance(v, float) else v)
     if p.get("short_description") and "description" not in out:
         out["description"] = str(p["short_description"])[:240]
     if isinstance(p.get("geocode"), dict):
@@ -85,6 +86,24 @@ async def search(query, kind=None, take=5):
         params["types"] = TYPES[kind]
     j = await get("/search", params)
     return [slim(e) for e in j.get("results", [])]
+
+
+async def entities(ids):
+    if not ids:
+        return []
+    j = await get("/entities", {"entity_ids": ",".join(ids)})
+    return j.get("results", [])
+
+
+def cuisine_tags(raw_entities):
+    from collections import Counter
+    c = Counter()
+    for e in raw_entities:
+        for t in e.get("tags") or []:
+            tid = t.get("id") or t.get("tag_id") or ""
+            if tid.startswith("urn:tag:cuisine:qloo:") and not tid.endswith((":asian", ":international")):
+                c[tid] += 1
+    return [t for t, _ in c.most_common(5)]
 
 
 async def find_tags(query, parent_kind=None, take=6):

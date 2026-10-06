@@ -24,7 +24,7 @@ h1, h2, h3 { font-family: Fraunces, Georgia, serif; font-weight: 600; line-heigh
 .brand { display: flex; gap: 10px; align-items: center; font: 600 20px Fraunces, Georgia, serif; text-decoration: none; }
 .powered { font-size: 13px; color: var(--muted); }
 
-.start { max-width: 1120px; margin: 0 auto; padding: 8px 24px 40px; display: grid; grid-template-columns: 1fr 1fr; gap: 32px; align-items: start; }
+.start { max-width: 1120px; margin: 0 auto; padding: 8px 24px 40px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 32px; align-items: start; }
 .cover { background: var(--cover); color: var(--cover-text); border-radius: 20px; padding: 40px 36px; position: relative; overflow: hidden; min-height: 420px; }
 .cover::after { content: ""; position: absolute; right: -60px; bottom: -60px; width: 240px; height: 240px; border: 2px dashed var(--gold); border-radius: 50%; opacity: .5; }
 .cover h1 { font-size: clamp(30px, 4vw, 44px); margin: 10px 0 18px; }
@@ -65,7 +65,8 @@ small { color: var(--muted); font-weight: 400; }
 .match { display: grid; grid-template-columns: 52px 1fr auto; gap: 12px; align-items: center; padding: 10px; border: 1px solid var(--line); border-radius: 14px; }
 .match img, .thumb { width: 52px; height: 52px; border-radius: 10px; object-fit: cover; background: var(--chip); display: grid; place-items: center; font-size: 22px; }
 .match .nm { font-weight: 700; } .match .sub { font-size: 13px; color: var(--muted); }
-.match select { max-width: 100%; font-size: 13px; padding: 6px 8px; margin-top: 4px; }
+.match select { width: 100%; max-width: 100%; font-size: 13px; padding: 6px 8px; margin-top: 4px; text-overflow: ellipsis; }
+.match > div { min-width: 0; }
 .match.missing { opacity: .6; }
 
 .guide { max-width: 1240px; margin: 0 auto; padding: 8px 24px 40px; }

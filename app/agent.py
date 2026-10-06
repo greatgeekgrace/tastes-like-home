@@ -4,23 +4,11 @@ from datetime import date
 
 from . import llm, qloo
 
-CATEGORIES = [
-    ("eat", "Restaurants that taste like home", "restaurant"),
-    ("cafe", "Cafés to make your own", "cafe coffee shop"),
-    ("night", "Evenings out", "bar cocktail lounge"),
-    ("culture", "Culture & browsing", "bookstore museum gallery"),
+SECTIONS = [
+    ("cafe", "Cafés to make your own", ["urn:tag:category:place:cafe", "urn:tag:category:place:coffee_shop"]),
+    ("night", "Evenings out", ["urn:tag:category:place:bar", "urn:tag:category:place:cocktail_bar"]),
+    ("culture", "Books, art & culture", ["urn:tag:category:place:book_store", "urn:tag:genre:place:museum"]),
 ]
-_cat_tags: dict = {}
-
-
-async def category_tags(query):
-    if query not in _cat_tags:
-        try:
-            tags = await qloo.find_tags(query, "place", take=6)
-        except qloo.QlooError:
-            tags = []
-        _cat_tags[query] = [t["id"] for t in tags if t.get("id") and ":place" in t["id"]][:4]
-    return _cat_tags[query]
 
 
 def _profile(p):
@@ -31,23 +19,18 @@ def _profile(p):
 async def build_guide(profile):
     favs, ids, names = _profile(profile)
     city = profile["city"]
-    exclude = [f["id"] for f in favs if f.get("type") == "place"]
+    place_ids = [f["id"] for f in favs if f.get("type") == "place"]
+    try:
+        cuisines = qloo.cuisine_tags(await qloo.entities(place_ids))
+    except qloo.QlooError:
+        cuisines = []
 
-    async def section(key, title, q):
-        tags = await category_tags(q)
+    async def rec(kind, **kw):
         try:
-            items = await qloo.recommend("place", signal_ids=ids, names=names, city=city, tag_ids=tags, take=6,
-                                         price_max=profile.get("price_max"), exclude_ids=exclude)
+            items = await qloo.recommend(kind, names=names, city=city, take=10, **kw)
         except qloo.QlooError:
-            items = []
-        return {"key": key, "title": title, "items": [i for i in items if not i.get("closed")][:5]}
-
-    async def culture(kind, title):
-        try:
-            items = await qloo.recommend(kind, signal_ids=ids, names=names, city=city, take=5)
-        except qloo.QlooError:
-            items = []
-        return {"key": kind, "title": title, "items": items}
+            return []
+        return [i for i in items if not i.get("closed")]
 
     async def dna():
         try:
@@ -55,13 +38,23 @@ async def build_guide(profile):
         except qloo.QlooError:
             return []
 
-    results = await asyncio.gather(
+    home_tags = cuisines or ["urn:tag:category:place:restaurant"]
+    jobs = [
+        rec("place", signal_ids=place_ids or ids, tag_ids=home_tags, price_max=profile.get("price_max"), exclude_ids=place_ids),
+        *[rec("place", signal_ids=ids, tag_ids=t, exclude_ids=place_ids, price_max=profile.get("price_max") if k != "culture" else None) for k, _, t in SECTIONS],
+        rec("artist", signal_ids=ids),
+        rec("podcast", signal_ids=ids),
         dna(),
-        *[section(k, t, q) for k, t, q in CATEGORIES],
-        culture("artist", "Artists people like you are playing here"),
-        culture("podcast", "Podcasts to get your bearings"),
-    )
-    guide = {"dna": results[0], "sections": [s for s in results[1:] if s["items"]]}
+    ]
+    res = await asyncio.gather(*jobs)
+    titles = [("eat", "A taste of home")] + [(k, t) for k, t, _ in SECTIONS] + [("artist", "Artists people like you are playing here"), ("podcast", "Podcasts to get your bearings")]
+    seen, sections = set(), []
+    for (key, title), items in zip(titles, res[:-1]):
+        keep = [i for i in items if i["id"] not in seen][:5]
+        seen.update(i["id"] for i in keep)
+        if keep:
+            sections.append({"key": key, "title": title, "items": keep})
+    guide = {"dna": res[-1], "home_cuisines": [c.split(":")[-1].replace("_", " ") for c in cuisines], "sections": sections}
     guide["plan"] = await first_week(profile, guide)
     return guide
 

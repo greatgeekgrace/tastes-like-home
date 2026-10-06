@@ -20,12 +20,13 @@ async function api(path, body) {
 }
 function md(text) {
   const lines = esc(text).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").split("\n");
+  const it = (x) => x.replace(/\*([^*]+)\*/g, "<i>$1</i>");
   let h = "", list = false;
   for (const l of lines) {
     const m = l.match(/^\s*(?:[-*•]|\d+\.)\s+(.*)/);
-    if (m) { if (!list) { h += "<ul>"; list = true; } h += `<li>${m[1]}</li>`; continue; }
+    if (m) { if (!list) { h += "<ul>"; list = true; } h += `<li>${it(m[1])}</li>`; continue; }
     if (list) { h += "</ul>"; list = false; }
-    if (l.trim()) h += `<p>${l}</p>`;
+    if (l.trim()) h += `<p>${it(l)}</p>`;
   }
   return h + (list ? "</ul>" : "");
 }
@@ -53,7 +54,7 @@ $("#favs").addEventListener("click", (e) => { const b = e.target.closest("button
 $("#sample").addEventListener("click", () => {
   $("#home").value = "Chengdu"; $("#city").value = "Los Angeles";
   favs = [
-    { name: "Chen Mapo Tofu", kind: "place" }, { name: "Haidilao Hot Pot", kind: "brand" }, { name: "Jay Chou", kind: "artist" },
+    { name: "Chen Mapo Tofu", kind: "place" }, { name: "Haidilao Hot Pot", kind: "place" }, { name: "Jay Chou", kind: "artist" },
     { name: "In the Mood for Love", kind: "movie" }, { name: "The Three-Body Problem", kind: "book" }, { name: "Studio Ghibli Spirited Away", kind: "movie" },
   ];
   $("#needs").value = "I miss really spicy food, need a quiet place to study on weekends, and want to meet people who like film.";
@@ -96,7 +97,7 @@ $("#back").addEventListener("click", () => { $("#confirm").hidden = true; $("#se
 
 $("#build").addEventListener("click", async () => {
   const picked = resolved.map((r) => ({ r, m: r.matches[r.pick ?? 0] })).filter((x) => x.m && (x.r.pick ?? 0) >= 0)
-    .map(({ r, m }) => ({ id: m.id, name: m.name, type: m.type || r.kind, image: m.image }));
+    .map(({ r, m }) => ({ id: m.id, name: r.input, type: m.type || r.kind, image: m.image }));
   if (!picked.length) { toast("None of your favourites were found — try adding a few more well-known ones."); return; }
   PROFILE = { home: $("#home").value.trim() || null, city: $("#city").value.trim(), needs: $("#needs").value.trim() || null,
               price_max: $("#price").value ? +$("#price").value : null, favorites: picked };
